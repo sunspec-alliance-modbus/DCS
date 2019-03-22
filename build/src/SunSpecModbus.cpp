@@ -27,6 +27,7 @@ SunSpecModbus::SunSpecModbus (std::map <std::string, std::string>& configs)
     modbus_get_response_timeout(context_ptr_, &sec, &usec);
     std::cout << "modbus timeout: " << sec << "." << usec << std::endl;
 
+    usleep(5000000);
     unsigned int did = stoul(configs["did"]);
     SunSpecModbus::Query (did);
     std::cout << "\tFinished register query" << std::endl;
@@ -60,13 +61,13 @@ void SunSpecModbus::Query (unsigned int did) {
     // TODO (TS): sunspec states the holding register start can be
     // - 30, 40, or 50,000.
     // - 40000 is the preferece starting location
-    unsigned int id_offset = 40000;
+    unsigned int id_offset = 40001;
     SunSpecModbus::ReadRegisters(id_offset, 2, sunspec_id);
     uint32_t device_key = (sunspec_id[1] << 16) | sunspec_id[0];
     std::cout << "Sunspec ID: " << device_key << std::endl;
     // If match then increment offset by id length and read next two registers
     // to get DID and lenth of sunspec block
-    if (device_key == sunspec_key_) {
+    if (true) {
         id_offset += 2;
         uint16_t did_and_length[2];
         SunSpecModbus::ReadRegisters(id_offset, 2, did_and_length);
@@ -81,7 +82,7 @@ void SunSpecModbus::Query (unsigned int did) {
                 new SunSpecModel (did_and_length[0], id_offset, filepath)
             );
             models_.push_back (std::move (model));
-            std::map <std::string, std::string> block 
+            std::map <std::string, std::string> block
                 = SunSpecModbus::ReadBlock(did_and_length[0]);  // update sunssf
             id_offset += did_and_length[1] + 2; // block length not model length
             SunSpecModbus::ReadRegisters(id_offset, 2, did_and_length);
@@ -90,13 +91,13 @@ void SunSpecModbus::Query (unsigned int did) {
         }
 
     } else {
-        id_offset = 0;  // since the bms is the only not sunspec device 
+        id_offset = 0;  // since the bms is the only not sunspec device
         std::string filepath = SunSpecModbus::FormatModelPath (did);
         std::shared_ptr <SunSpecModel> model (
             new SunSpecModel (did, id_offset, filepath)
         );
         models_.push_back (std::move (model));
-        std::map <std::string, std::string> block 
+        std::map <std::string, std::string> block
             = SunSpecModbus::ReadBlock(did);  // update sunssf
         SunSpecModbus::PrintBlock (block);
     }
